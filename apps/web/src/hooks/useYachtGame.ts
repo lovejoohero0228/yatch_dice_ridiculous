@@ -1,9 +1,11 @@
-﻿import { useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { calcScore, calcTotal } from '../lib/yacht';
+import { CATEGORIES } from '../types';
 import type { CategoryId, GameMode, GameState, Player } from '../types';
 
 const EMPTY_DICE: [number, number, number, number, number] = [1, 1, 1, 1, 1];
 const EMPTY_KEPT: [boolean, boolean, boolean, boolean, boolean] = [false, false, false, false, false];
+const TOTAL_ROUNDS = CATEGORIES.length;
 
 function createPlayer(name: string, isBot: boolean): Player {
   return {
@@ -21,19 +23,28 @@ function roll(kept: boolean[], prev: number[]): [number, number, number, number,
 }
 
 export function useYachtGame(mode: GameMode = 'bot') {
-  const [state, setState] = useState<GameState>({
-    mode,
-    players: [createPlayer('Player 1', false), createPlayer(mode === 'bot' ? 'Bot' : 'Player 2', mode === 'bot')],
-    currentPlayer: 0,
-    dice: EMPTY_DICE,
-    kept: EMPTY_KEPT,
-    rollsLeft: 3,
-    rolled: false,
-    round: 1,
-  });
+  function createInitialState(): GameState {
+    return {
+      mode,
+      players: [createPlayer('Player 1', false), createPlayer(mode === 'bot' ? 'Bot' : 'Player 2', mode === 'bot')],
+      currentPlayer: 0,
+      dice: EMPTY_DICE,
+      kept: EMPTY_KEPT,
+      pendingCategory: null,
+      rollsLeft: 3,
+      rolled: false,
+      round: 1,
+    };
+  }
+
+  const [state, setState] = useState<GameState>(createInitialState);
+
+  useEffect(() => {
+    setState(createInitialState());
+  }, [mode]);
 
   const winner = useMemo(() => {
-    if (state.round <= 12) return null;
+    if (state.round <= TOTAL_ROUNDS) return null;
     const [a, b] = state.players;
     if (a.totalScore === b.totalScore) return null;
     return a.totalScore > b.totalScore ? 0 : 1;
@@ -54,26 +65,40 @@ export function useYachtGame(mode: GameMode = 'bot') {
 
   function rollDice() {
     setState((s) => {
-      if (s.rollsLeft <= 0) return s;
+      if (s.rollsLeft <= 0 || s.round > TOTAL_ROUNDS) return s;
       const dice = roll(s.kept, s.dice);
       return {
         ...s,
         dice,
         rollsLeft: s.rollsLeft - 1,
+        pendingCategory: null,
         rolled: true,
       };
     });
   }
 
-  function selectCategory(categoryId: CategoryId) {
+  function setPendingCategory(categoryId: CategoryId) {
     setState((s) => {
-      if (!s.rolled) return s;
+      if (!s.rolled || s.round > TOTAL_ROUNDS) return s;
+      if (s.players[s.currentPlayer].scores[categoryId] !== undefined) return s;
+      return {
+        ...s,
+        pendingCategory: categoryId,
+      };
+    });
+  }
+
+  function confirmCategory(categoryId?: CategoryId) {
+    setState((s) => {
+      if (!s.rolled || s.round > TOTAL_ROUNDS) return s;
       const current = s.currentPlayer;
-      if (s.players[current].scores[categoryId] !== undefined) return s;
+      const targetCategory = categoryId ?? s.pendingCategory;
+      if (targetCategory === null) return s;
+      if (s.players[current].scores[targetCategory] !== undefined) return s;
 
       const players = [...s.players] as [Player, Player];
       const player = { ...players[current] };
-      const scores = { ...player.scores, [categoryId]: calcScore(categoryId, s.dice) };
+      const scores = { ...player.scores, [targetCategory]: calcScore(targetCategory, s.dice) };
       player.scores = scores;
       player.totalScore = calcTotal(scores);
       players[current] = player;
@@ -88,11 +113,16 @@ export function useYachtGame(mode: GameMode = 'bot') {
         currentPlayer: nextCurrent,
         dice: EMPTY_DICE,
         kept: EMPTY_KEPT,
+        pendingCategory: null,
         rollsLeft: 3,
         rolled: false,
         round: nextRound,
       };
     });
+  }
+
+  function resetGame() {
+    setState(createInitialState());
   }
 
   return {
@@ -101,6 +131,8 @@ export function useYachtGame(mode: GameMode = 'bot') {
     setKept,
     toggleKeep,
     rollDice,
-    selectCategory,
+    setPendingCategory,
+    confirmCategory,
+    resetGame,
   };
 }

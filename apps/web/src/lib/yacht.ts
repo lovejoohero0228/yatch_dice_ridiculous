@@ -18,6 +18,8 @@ export function calcScore(categoryId: CategoryId, dice: number[]): number {
       return counts[4] * 5;
     case 'sixes':
       return counts[5] * 6;
+    case '3oak':
+      return counts.some((c) => c >= 3) ? sum : 0;
     case 'choice':
       return sum;
     case '4oak':

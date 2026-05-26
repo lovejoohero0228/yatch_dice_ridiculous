@@ -23,8 +23,13 @@ export function useBotAI(game: ReturnType<typeof useYachtGame>) {
       }
 
       const available = CATEGORIES.filter((c) => game.players[1].scores[c] === undefined) as CategoryId[];
-      const cat = botChooseCategory(game.dice, available);
-      game.selectCategory(cat);
+      if (game.pendingCategory === null) {
+        const cat = botChooseCategory(game.dice, available);
+        game.setPendingCategory(cat);
+        return;
+      }
+
+      game.confirmCategory();
     }, randMs(BOT_ROLL_DELAY.min, BOT_THINK_DELAY.max));
 
     return () => clearTimeout(timer);

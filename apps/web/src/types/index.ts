@@ -7,6 +7,7 @@ export type CategoryId =
   | 'fours'
   | 'fives'
   | 'sixes'
+  | '3oak'
   | 'choice'
   | '4oak'
   | 'fh'
@@ -31,6 +32,7 @@ export interface GameState {
   currentPlayer: 0 | 1;
   dice: [number, number, number, number, number];
   kept: [boolean, boolean, boolean, boolean, boolean];
+  pendingCategory: CategoryId | null;
   rollsLeft: number;
   rolled: boolean;
   round: number;
@@ -43,12 +45,13 @@ export const CATEGORIES: CategoryId[] = [
   'fours',
   'fives',
   'sixes',
-  'choice',
+  '3oak',
   '4oak',
   'fh',
   'ss',
   'ls',
   'yacht',
+  'choice',
 ];
 
 export const CATEGORY_LABELS: Record<CategoryId, string> = {
@@ -58,6 +61,7 @@ export const CATEGORY_LABELS: Record<CategoryId, string> = {
   fours: 'Fours',
   fives: 'Fives',
   sixes: 'Sixes',
+  '3oak': '3 of a Kind',
   choice: 'Choice',
   '4oak': '4 of a Kind',
   fh: 'Full House',
