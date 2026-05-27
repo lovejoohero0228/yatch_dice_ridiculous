@@ -4,272 +4,335 @@ import { DiceRack } from './components/game/DiceRack';
 import { EmojiTauntBar } from './components/game/EmojiTauntBar';
 import { Scorecard } from './components/game/Scorecard';
 import { useBotAI } from './hooks/useBotAI';
-import { randomTaunt } from './lib/taunts';
+import { useOnlineGame } from './hooks/useOnlineGame';
 import { useYachtGame } from './hooks/useYachtGame';
-import { CATEGORIES } from './types';
+import type { CategoryId, GameMode } from './types';
 
-type OverlayState = {
-  id: number;
-  emoji: string;
-  playerIndex: 0 | 1;
-};
+type IntroStep =
+  | 'account-choice'
+  | 'account-create'
+  | 'account-select'
+  | 'mode-select'
+  | 'friend-mode-select'
+  | 'online-menu'
+  | 'room-wait'
+  | 'room-join';
+
+type Scene = 'intro' | 'online-game' | 'local-game';
+
+function makeRoomCode() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
 
 function randomDice(kept: boolean[], baseDice: [number, number, number, number, number]): [number, number, number, number, number] {
   return baseDice.map((value, index) => (kept[index] ? value : Math.floor(Math.random() * 6) + 1)) as [number, number, number, number, number];
 }
 
 export default function App() {
-  const ROLL_LOCK_MS = 1000;
-  const [selectedMode, setSelectedMode] = useState<'bot' | 'online'>('bot');
-  const [introStep, setIntroStep] = useState<'menu' | 'online'>('menu');
-  const [onlineChoice, setOnlineChoice] = useState<'idle' | 'create' | 'join'>('idle');
-  const [roomCodeInput, setRoomCodeInput] = useState('');
-  const generatedRoomCode = useMemo(() => Math.random().toString(36).slice(2, 8).toUpperCase(), []);
-  const game = useYachtGame(selectedMode === 'bot' ? 'bot' : 'online');
-  useBotAI(game);
-
-  const [hasStarted, setHasStarted] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [emojiBursts, setEmojiBursts] = useState<OverlayState[]>([]);
-  const [isRollingAnim, setIsRollingAnim] = useState(false);
-  const [isRollLocked, setIsRollLocked] = useState(false);
+  const online = useOnlineGame();
+  const [scene, setScene] = useState<Scene>('intro');
+  const [step, setStep] = useState<IntroStep>('account-choice');
+  const [newName, setNewName] = useState('');
+  const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [inputRoomCode, setInputRoomCode] = useState('');
+  const [createdRoomCode, setCreatedRoomCode] = useState('');
+  const [message, setMessage] = useState('');
+  const [localMode, setLocalMode] = useState<GameMode>('bot');
+  const [localTaunts, setLocalTaunts] = useState<Array<{ id: number; emoji: string; playerIndex: 0 | 1 }>>([]);
   const [previewDice, setPreviewDice] = useState<[number, number, number, number, number] | null>(null);
   const rollPreviewRef = useRef<number | null>(null);
-  const rollFinalizeRef = useRef<number | null>(null);
+  const rollReleasedRef = useRef(false);
+  const isHoldingRollRef = useRef(false);
+  const generatedRoom = useMemo(() => makeRoomCode(), []);
 
-  const totalRounds = CATEGORIES.length;
-  const roundNow = Math.min(game.round, totalRounds);
-  const isOver = game.round > totalRounds;
-  const canRoll = game.rollsLeft > 0 && game.currentPlayer === 0 && !isOver && !isRollLocked;
-  const shownDice = previewDice ?? game.dice;
+  const activeAccount = online.activeAccount;
+  const localGame = useYachtGame(localMode, {
+    playerOneName: activeAccount?.name ?? 'Player 1',
+    playerTwoName: localMode === 'bot' ? 'Bot' : 'Player 2',
+  });
+  useBotAI(localGame);
 
-  const winnerLabel = useMemo(() => {
-    if (!isOver) return '';
-    return game.winner === null ? 'DRAW' : `${game.players[game.winner].name} WINS`;
-  }, [isOver, game.winner, game.players]);
+  const onlineGame = online.roomState?.game ?? null;
+  const game = scene === 'online-game' ? onlineGame : scene === 'local-game' ? localGame : null;
+  const players = game?.players ?? [];
+  const isOnline = scene === 'online-game';
+  const myTurn = isOnline ? Boolean(game && online.myPlayerIndex === game.currentPlayer) : Boolean(game && game.currentPlayer === 0);
+  const canKeep = Boolean(game && myTurn && game.rolled && game.rollsLeft < 3 && !isGameOver(game));
+  const canRoll = Boolean(game && myTurn && game.rollsLeft > 0 && !isGameOver(game));
+  const shownDice = previewDice ?? game?.dice ?? [1, 1, 1, 1, 1];
+  const timer = isOnline && onlineGame?.turnEndsAt ? Math.max(0, Math.ceil((onlineGame.turnEndsAt - Date.now()) / 1000)) : null;
+  const scorePlayers = (players.length === 2
+    ? players
+    : [{ name: 'P1', totalScore: 0, scores: {} }, { name: 'P2', totalScore: 0, scores: {} }]) as [
+    { name: string; totalScore: number; scores: Partial<Record<CategoryId, number>> },
+    { name: string; totalScore: number; scores: Partial<Record<CategoryId, number>> },
+  ];
+  const winner = isOnline ? onlineGame?.winner ?? null : localGame.winner;
+  const isOver = game ? isGameOver(game) : false;
+  const taunts = isOnline ? online.taunts : localTaunts;
 
-  function pushTaunt(playerIndex: 0 | 1, emoji: string) {
-    const id = Date.now() + Math.floor(Math.random() * 1000);
-    setEmojiBursts((prev) => [...prev, { id, emoji, playerIndex }]);
-    window.setTimeout(() => {
-      setEmojiBursts((prev) => prev.filter((burst) => burst.id !== id));
-    }, 2000);
-  }
-
-  function sendPlayerTaunt(emoji: string) {
-    if (isOver) return;
-    pushTaunt(0, emoji);
-    const retaliate = randomTaunt();
-    window.setTimeout(() => pushTaunt(1, retaliate.emoji), 850);
-  }
-
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [game.currentPlayer, game.round]);
-
-  useEffect(() => {
-    if (previewDice) {
-      setIsRollingAnim(true);
-      return;
-    }
-    if (!game.rolled) return;
-    setIsRollingAnim(true);
-    const timer = window.setTimeout(() => setIsRollingAnim(false), 160);
-    return () => window.clearTimeout(timer);
-  }, [game.dice, game.rolled, previewDice]);
-
-  useEffect(() => {
-    return () => {
-      if (rollPreviewRef.current !== null) window.clearInterval(rollPreviewRef.current);
-      if (rollFinalizeRef.current !== null) window.clearTimeout(rollFinalizeRef.current);
-    };
+  useEffect(() => () => {
+    if (rollPreviewRef.current !== null) window.clearInterval(rollPreviewRef.current);
   }, []);
 
+  useEffect(() => {
+    if (scene === 'online-game' && onlineGame) setMessage('');
+  }, [scene, onlineGame]);
+
+  async function handleCreateAccountContinue() {
+    try {
+      setMessage('');
+      await online.createAccount(newName.trim());
+      setSelectedAccountId('');
+      setStep('mode-select');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'account create failed');
+    }
+  }
+
+  function handleSelectAccountContinue() {
+    if (!selectedAccountId) return;
+    online.chooseAccount(selectedAccountId);
+    setMessage('');
+    setStep('mode-select');
+  }
+
   function beginHoldRoll() {
-    if (!canRoll || rollPreviewRef.current !== null) return;
+    if (!game || !canRoll || rollPreviewRef.current !== null) return;
+    isHoldingRollRef.current = true;
+    rollReleasedRef.current = false;
     setPreviewDice(randomDice(game.kept, game.dice));
-    setIsRollingAnim(true);
     rollPreviewRef.current = window.setInterval(() => {
       setPreviewDice(randomDice(game.kept, game.dice));
     }, 45);
   }
 
   function endHoldRoll() {
-    if (rollPreviewRef.current === null) return;
-    window.clearInterval(rollPreviewRef.current);
-    rollPreviewRef.current = null;
-    setPreviewDice(null);
-    setIsRollingAnim(false);
-    game.rollDice();
-    setIsRollLocked(true);
-    if (rollFinalizeRef.current !== null) window.clearTimeout(rollFinalizeRef.current);
-    rollFinalizeRef.current = window.setTimeout(() => {
-      setIsRollLocked(false);
-      rollFinalizeRef.current = null;
-    }, ROLL_LOCK_MS);
-  }
-
-  function confirmSelectedCategory() {
-    game.confirmCategory();
-  }
-
-  function resetLocalRollState() {
+    if (!isHoldingRollRef.current) return;
+    isHoldingRollRef.current = false;
+    if (!game || rollReleasedRef.current) return;
+    rollReleasedRef.current = true;
     if (rollPreviewRef.current !== null) {
       window.clearInterval(rollPreviewRef.current);
       rollPreviewRef.current = null;
     }
-    if (rollFinalizeRef.current !== null) {
-      window.clearTimeout(rollFinalizeRef.current);
-      rollFinalizeRef.current = null;
-    }
     setPreviewDice(null);
-    setIsRollingAnim(false);
-    setIsRollLocked(false);
+    if (!canRoll) return;
+    if (isOnline) online.actionRoll();
+    else localGame.rollDice();
+  }
+
+  function onSelectCategory(categoryId: CategoryId) {
+    if (isOnline) online.actionSelectCategory(categoryId);
+    else localGame.setPendingCategory(categoryId);
+  }
+
+  function onConfirmCategory() {
+    if (isOnline) online.actionConfirmCategory();
+    else localGame.confirmCategory();
+  }
+
+  function onToggleKeep(index: number) {
+    if (isOnline) online.actionToggleKeep(index);
+    else localGame.toggleKeep(index);
+  }
+
+  function onSendTaunt(emoji: string) {
+    if (isOnline) {
+      online.sendTaunt(emoji);
+      return;
+    }
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    const playerIndex = (localGame.currentPlayer === 0 ? 0 : 1) as 0 | 1;
+    setLocalTaunts((prev) => [...prev, { id, emoji, playerIndex }]);
+    window.setTimeout(() => setLocalTaunts((prev) => prev.filter((t) => t.id !== id)), 1900);
   }
 
   return (
     <main className="app-root">
-      {!hasStarted && (
+      {scene === 'intro' && (
         <section className="intro-screen">
           <div className="intro-card">
-            {introStep === 'menu' ? (
+            <h1>Yacht Dice</h1>
+            {step === 'account-choice' && (
+              <div className="intro-actions">
+                <button className="start-button" onClick={() => setStep('account-create')}>계정 생성하기</button>
+                <button className="start-button" onClick={() => setStep('account-select')}>기존 계정 사용하기</button>
+              </div>
+            )}
+            {step === 'account-create' && (
               <>
-                <h1>Yacht Dice</h1>
-                <div className="intro-actions">
-                  <button className="start-button" onClick={() => { setSelectedMode('bot'); setHasStarted(true); }}>
-                    봇과 플레이
-                  </button>
-                  <button className="start-button alt" onClick={() => { setSelectedMode('online'); setIntroStep('online'); }}>
-                    친구와 온라인으로
-                  </button>
+                <div className="online-card">
+                  <input className="room-input" placeholder="닉네임" value={newName} onChange={(e) => setNewName(e.target.value)} />
+                  <button className="start-button" disabled={!newName.trim()} onClick={() => void handleCreateAccountContinue()}>Continue</button>
                 </div>
-              </>
-            ) : (
-              <>
-                <h1>Online Room</h1>
-                <div className="intro-actions">
-                  <button className="start-button" onClick={() => setOnlineChoice('create')}>
-                    방 코드 생성
-                  </button>
-                  <button className="start-button alt" onClick={() => setOnlineChoice('join')}>
-                    방 코드 입력
-                  </button>
-                </div>
-                {onlineChoice === 'create' && (
-                  <div className="online-card">
-                    <strong>{generatedRoomCode}</strong>
-                    <p>실시간 동기화 연결은 서버 연동이 필요해서 아직 UI만 준비된 상태입니다.</p>
-                    <button className="start-button" onClick={() => setHasStarted(true)}>
-                      테스트 화면 열기
-                    </button>
-                  </div>
-                )}
-                {onlineChoice === 'join' && (
-                  <div className="online-card">
-                    <input
-                      className="room-input"
-                      value={roomCodeInput}
-                      onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase())}
-                      placeholder="ROOM CODE"
-                    />
-                    <p>방 코드 흐름 UI는 준비했지만 실제 친구 연결은 별도 서버 작업이 필요합니다.</p>
-                    <button className="start-button" onClick={() => setHasStarted(true)} disabled={!roomCodeInput.trim()}>
-                      코드로 입장
-                    </button>
-                  </div>
-                )}
-                <button className="back-link" onClick={() => { setIntroStep('menu'); setOnlineChoice('idle'); }}>
-                  뒤로
-                </button>
+                <button className="back-link" onClick={() => setStep('account-choice')}>뒤로</button>
               </>
             )}
+            {step === 'account-select' && (
+              <>
+                <div className="online-card">
+                  <div className="intro-actions">
+                    {online.accounts.map((a) => (
+                      <button
+                        key={a.id}
+                        className={`start-button ${selectedAccountId === a.id ? 'selected-button' : ''}`}
+                        onClick={() => setSelectedAccountId(a.id)}
+                      >
+                        {a.name}
+                      </button>
+                    ))}
+                  </div>
+                  <button className="start-button" disabled={!selectedAccountId} onClick={handleSelectAccountContinue}>Continue</button>
+                </div>
+                <button className="back-link" onClick={() => setStep('account-choice')}>뒤로</button>
+              </>
+            )}
+            {step === 'mode-select' && (
+              <>
+                <div className="online-card">
+                  <p>{activeAccount ? `${activeAccount.name} 계정 선택됨` : '계정을 먼저 선택하세요'}</p>
+                  <div className="intro-actions">
+                    <button className="start-button" onClick={() => { setLocalMode('bot'); localGame.resetGame(); setScene('local-game'); }}>봇과 플레이</button>
+                    <button className="start-button" onClick={() => setStep('friend-mode-select')}>친구와 플레이</button>
+                  </div>
+                </div>
+                <button className="back-link" onClick={() => setStep('account-choice')}>처음으로</button>
+              </>
+            )}
+            {step === 'friend-mode-select' && (
+              <>
+                <div className="online-card">
+                  <div className="intro-actions">
+                    <button className="start-button" onClick={() => setStep('online-menu')}>온라인 대전</button>
+                    <button className="start-button" onClick={() => { setLocalMode('local'); localGame.resetGame(); setScene('local-game'); }}>오프라인 대전</button>
+                  </div>
+                </div>
+                <button className="back-link" onClick={() => setStep('mode-select')}>뒤로</button>
+              </>
+            )}
+            {step === 'online-menu' && (
+              <>
+                <div className="online-card">
+                  <div className="intro-actions">
+                    <button
+                      className="start-button"
+                      onClick={() => {
+                        setCreatedRoomCode(generatedRoom);
+                        online.connectToRoom(generatedRoom);
+                        setScene('online-game');
+                        setStep('room-wait');
+                      }}
+                    >
+                      방 생성
+                    </button>
+                    <button className="start-button" onClick={() => setStep('room-join')}>방 참여</button>
+                  </div>
+                </div>
+                <button className="back-link" onClick={() => setStep('friend-mode-select')}>뒤로</button>
+              </>
+            )}
+            {step === 'room-wait' && (
+              <>
+                <div className="online-card">
+                  <strong>{createdRoomCode}</strong>
+                  <p>상대가 입장하면 자동으로 시작됩니다.</p>
+                </div>
+                <button className="back-link" onClick={() => setStep('online-menu')}>뒤로</button>
+              </>
+            )}
+            {step === 'room-join' && (
+              <>
+                <div className="online-card">
+                  <input className="room-input" placeholder="ROOM CODE" value={inputRoomCode} onChange={(e) => setInputRoomCode(e.target.value.toUpperCase())} />
+                  <button
+                    className="start-button"
+                    disabled={!inputRoomCode.trim()}
+                    onClick={() => {
+                      online.connectToRoom(inputRoomCode);
+                      setScene('online-game');
+                    }}
+                  >
+                    입장
+                  </button>
+                </div>
+                <button className="back-link" onClick={() => setStep('online-menu')}>뒤로</button>
+              </>
+            )}
+            {(message || online.error) && <p>{message || online.error}</p>}
           </div>
         </section>
       )}
 
-      <section className="board-shell">
-        <header className="top-strip table-top">
-          <article className={`score-tile ${game.currentPlayer === 0 ? 'active' : ''}`}>
-            {emojiBursts.filter((burst) => burst.playerIndex === 0).map((burst, index) => (
-              <span key={burst.id} className="score-emoji score-emoji-right" style={{ '--burst-index': index } as CSSProperties}>{burst.emoji}</span>
-            ))}
-            <span className="tile-label">{game.players[0].name}</span>
-            <strong>{game.players[0].totalScore}</strong>
-          </article>
-          <div className="title-block">
-            <strong>Yacht Dice</strong>
-            <span>Round {roundNow}/{totalRounds}</span>
-          </div>
-          <article className={`score-tile ${game.currentPlayer === 1 ? 'active' : ''}`}>
-            {emojiBursts.filter((burst) => burst.playerIndex === 1).map((burst, index) => (
-              <span key={burst.id} className="score-emoji score-emoji-left" style={{ '--burst-index': index } as CSSProperties}>{burst.emoji}</span>
-            ))}
-            <span className="tile-label">{game.players[1].name}</span>
-            <strong>{game.players[1].totalScore}</strong>
-          </article>
-          <div className="menu-wrap">
-            <button className="menu-button" onClick={() => setMenuOpen((open) => !open)} aria-expanded={menuOpen}>
-              Menu
-            </button>
-            {menuOpen && (
-              <div className="menu-popover">
-                <button className="menu-item" onClick={() => { setMenuOpen(false); setEmojiBursts([]); resetLocalRollState(); game.resetGame(); }}>
-                  New Match
-                </button>
-              </div>
-            )}
-          </div>
-        </header>
-
-        <section className="board-main">
-          <section className="table-layout">
-            <Scorecard
-              dice={shownDice}
-              rolled={game.rolled}
-              currentPlayer={game.currentPlayer}
-              players={game.players}
-              selectedCategory={game.pendingCategory}
-              onSelect={game.setPendingCategory}
-            />
-
-            <section className="dice-stage compact">
-              <DiceRack
+      {scene !== 'intro' && game && (
+        <section className="board-shell">
+          <header className="top-strip table-top">
+            <article className={`score-tile ${game.currentPlayer === 0 ? 'active' : ''}`}>
+              {taunts.filter((t) => t.playerIndex === 0).map((t, i) => (
+                <span key={t.id} className="score-emoji score-emoji-right" style={{ '--burst-index': i } as CSSProperties}>{t.emoji}</span>
+              ))}
+              <span className="tile-label">{players[0]?.name ?? 'P1'}</span>
+              <strong>{players[0]?.totalScore ?? 0}</strong>
+            </article>
+            <div className="title-block">
+              <strong>{isOnline ? `Room ${online.roomCode}` : (localMode === 'bot' ? 'Bot Match' : 'Offline Match')}</strong>
+              <span>Round {game.round}/13 {timer !== null ? `| Turn ${timer}s` : ''}</span>
+            </div>
+            <article className={`score-tile ${game.currentPlayer === 1 ? 'active' : ''}`}>
+              {taunts.filter((t) => t.playerIndex === 1).map((t, i) => (
+                <span key={t.id} className="score-emoji score-emoji-left" style={{ '--burst-index': i } as CSSProperties}>{t.emoji}</span>
+              ))}
+              <span className="tile-label">{players[1]?.name ?? 'P2'}</span>
+              <strong>{players[1]?.totalScore ?? 0}</strong>
+            </article>
+          </header>
+          <section className="board-main">
+            <section className="table-layout">
+              <Scorecard
                 dice={shownDice}
-                kept={game.kept}
-                canKeep={game.rolled && game.rollsLeft < 3 && game.currentPlayer === 0 && !isOver}
-                rolling={isRollingAnim}
-                onToggle={game.toggleKeep}
+                rolled={game.rolled}
+                currentPlayer={game.currentPlayer}
+                players={scorePlayers}
+                selectedCategory={game.pendingCategory as CategoryId | null}
+                onSelect={onSelectCategory}
               />
-
-              <div className="action-row compact">
-                <button
-                  className="roll-vertical"
-                  disabled={!canRoll}
-                  onPointerDown={beginHoldRoll}
-                  onPointerUp={endHoldRoll}
-                  onPointerCancel={endHoldRoll}
-                  onPointerLeave={endHoldRoll}
-                >
-                  <span className={game.rollsLeft === 3 && !isOver ? 'bouncing' : ''}>Roll</span>
-                </button>
-                <button
-                  className="confirm-score"
-                  disabled={game.pendingCategory === null || !game.rolled || game.currentPlayer !== 0 || isOver}
-                  onClick={confirmSelectedCategory}
-                >
-                  Confirm Score
-                </button>
-              </div>
-            </section>
-
-            <section className="taunt-area">
-              <EmojiTauntBar disabled={isOver} onSend={sendPlayerTaunt} />
+              <section className="dice-stage compact">
+                <DiceRack dice={shownDice} kept={game.kept} canKeep={canKeep} rolling={previewDice !== null} onToggle={onToggleKeep} />
+                <div className="action-row compact">
+                  <button
+                    className="roll-vertical"
+                    disabled={!canRoll}
+                    onPointerDown={beginHoldRoll}
+                    onPointerUp={endHoldRoll}
+                    onPointerCancel={endHoldRoll}
+                    onPointerLeave={endHoldRoll}
+                  >
+                    Roll
+                  </button>
+                  <button className="confirm-score" disabled={!myTurn || !game.pendingCategory || !game.rolled || isOver} onClick={onConfirmCategory}>
+                    Confirm Score
+                  </button>
+                </div>
+              </section>
+              <section className="taunt-area">
+                <EmojiTauntBar disabled={isOver} onSend={onSendTaunt} />
+              </section>
             </section>
           </section>
+          <div className="action-row compact">
+            <button className="start-button" onClick={() => { setScene('intro'); setStep('mode-select'); setMessage(''); }}>로비로 돌아가기</button>
+          </div>
+          {isOver && (
+            <div className="final-banner">
+              {winner === null ? 'DRAW' : `${players[winner]?.name} WINS`}
+            </div>
+          )}
         </section>
-
-        {isOver && <div className="final-banner">{winnerLabel}</div>}
-      </section>
+      )}
     </main>
   );
+}
+
+function isGameOver(game: { round: number; isOver?: boolean }) {
+  return typeof game.isOver === 'boolean' ? game.isOver : game.round > 13;
 }

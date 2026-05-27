@@ -1,4 +1,4 @@
-import type { CategoryId, Player } from '../../types';
+import type { CategoryId } from '../../types';
 import { CATEGORY_LABELS } from '../../types';
 import { calcScore, calcUpperBonus } from '../../lib/yacht';
 
@@ -6,7 +6,7 @@ interface Props {
   dice: number[];
   rolled: boolean;
   currentPlayer: number;
-  players: [Player, Player];
+  players: [{ name: string; scores: Partial<Record<CategoryId, number>>; totalScore: number }, { name: string; scores: Partial<Record<CategoryId, number>>; totalScore: number }];
   selectedCategory: CategoryId | null;
   onSelect: (categoryId: CategoryId) => void;
 }

@@ -74,10 +74,6 @@ button {
   margin-top: 1.25rem;
 }
 
-.start-button.alt {
-  background: linear-gradient(180deg, #fff4db 0%, #e8c47a 100%);
-}
-
 .online-card {
   margin-top: 1rem;
   padding: 1rem;
@@ -129,11 +125,18 @@ button {
   min-height: 56px;
   border: 2px solid var(--line);
   border-radius: 14px;
-  background: #ffffff;
-  color: var(--text);
+  background: linear-gradient(180deg, #fff4db 0%, #e8c47a 100%);
+  color: #5d2e07;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 800;
+  box-shadow: 0 8px 0 rgba(126, 77, 16, 0.2);
   cursor: pointer;
+}
+
+.selected-button {
+  box-shadow:
+    0 8px 0 rgba(126, 77, 16, 0.2),
+    0 0 0 3px rgba(124, 68, 11, 0.5) inset;
 }
 
 .board-shell {

@@ -22,11 +22,18 @@ function roll(kept: boolean[], prev: number[]): [number, number, number, number,
   return prev.map((v, i) => (kept[i] ? v : Math.floor(Math.random() * 6) + 1)) as [number, number, number, number, number];
 }
 
-export function useYachtGame(mode: GameMode = 'bot') {
+type UseYachtGameOptions = {
+  playerOneName?: string;
+  playerTwoName?: string;
+};
+
+export function useYachtGame(mode: GameMode = 'bot', options?: UseYachtGameOptions) {
   function createInitialState(): GameState {
+    const playerOneName = options?.playerOneName?.trim() || 'Player 1';
+    const playerTwoName = options?.playerTwoName?.trim() || (mode === 'bot' ? 'Bot' : 'Player 2');
     return {
       mode,
-      players: [createPlayer('Player 1', false), createPlayer(mode === 'bot' ? 'Bot' : 'Player 2', mode === 'bot')],
+      players: [createPlayer(playerOneName, false), createPlayer(playerTwoName, mode === 'bot')],
       currentPlayer: 0,
       dice: EMPTY_DICE,
       kept: EMPTY_KEPT,
@@ -41,7 +48,7 @@ export function useYachtGame(mode: GameMode = 'bot') {
 
   useEffect(() => {
     setState(createInitialState());
-  }, [mode]);
+  }, [mode, options?.playerOneName, options?.playerTwoName]);
 
   const winner = useMemo(() => {
     if (state.round <= TOTAL_ROUNDS) return null;
