@@ -43,7 +43,7 @@ button {
 .app-root {
   position: relative;
   min-height: 100vh;
-  padding: 1rem 0.75rem;
+  padding: 0;
 }
 
 .intro-screen {
@@ -160,9 +160,9 @@ button {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100dvh;
-  overflow: auto;
-  padding: clamp(8px, 2.2dvh, 22px) clamp(6px, 2vw, 14px);
+  min-height: 100svh;
+  overflow: hidden;
+  padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
 }
 
 .board-shell.scaled {
@@ -762,10 +762,6 @@ button {
 }
 
 @media (max-width: 720px) {
-  .app-root {
-    padding: 0.6rem;
-  }
-
   .board-shell {
     padding: 0.65rem;
   }
@@ -868,8 +864,7 @@ button {
   .board-viewport {
     min-height: 100svh;
     overflow: hidden;
-    padding-top: max(10px, env(safe-area-inset-top));
-    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    padding: max(4px, env(safe-area-inset-top)) max(4px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
   }
 
   .board-shell.scaled .top-strip,

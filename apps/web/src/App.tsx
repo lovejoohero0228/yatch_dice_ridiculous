@@ -85,15 +85,21 @@ export default function App() {
       }
       const baseWidth = 820;
       const baseHeight = 1180;
-      const widthScale = (window.innerWidth - 24) / baseWidth;
-      const heightScale = (window.innerHeight - 72) / baseHeight;
+      const vw = window.visualViewport?.width ?? window.innerWidth;
+      const vh = window.visualViewport?.height ?? window.innerHeight;
+      const widthScale = (vw - 12) / baseWidth;
+      const heightScale = (vh - 16) / baseHeight;
       const next = Math.min(1, widthScale, heightScale);
-      setBoardScale(Math.max(0.6, next));
+      setBoardScale(Math.max(0.35, next));
     };
 
     updateScale();
     window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
+    window.visualViewport?.addEventListener('resize', updateScale);
+    return () => {
+      window.removeEventListener('resize', updateScale);
+      window.visualViewport?.removeEventListener('resize', updateScale);
+    };
   }, []);
 
   useEffect(() => {
@@ -345,13 +351,10 @@ export default function App() {
                 <div className="action-row compact">
                   <button
                     className="roll-vertical"
-                    disabled={!canRoll}
-                    onClick={startRoll}
+                    disabled={!canRoll && !canStopRoll}
+                    onClick={canStopRoll ? stopRoll : startRoll}
                   >
-                    Roll
-                  </button>
-                  <button className="confirm-score" disabled={!canStopRoll} onClick={stopRoll}>
-                    Stop
+                    {canStopRoll ? 'Stop' : 'Roll'}
                   </button>
                   <button className="confirm-score" disabled={!myTurn || !game.pendingCategory || !game.rolled || isOver} onClick={onConfirmCategory}>
                     Confirm Score
