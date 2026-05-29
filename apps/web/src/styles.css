@@ -152,6 +152,23 @@ button {
   box-shadow: var(--shadow);
 }
 
+.board-viewport {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100dvh;
+  overflow: auto;
+  padding: 0.2rem;
+}
+
+.board-shell.scaled {
+  width: 820px;
+  max-width: none;
+  margin: 0;
+  transform: scale(var(--board-scale, 1));
+  transform-origin: top center;
+}
+
 .top-strip {
   position: relative;
   z-index: 1;
@@ -838,5 +855,41 @@ button {
 
   .taunt-btn span {
     font-size: 1.7rem;
+  }
+
+  .board-shell.scaled {
+    padding: 0.85rem;
+  }
+
+  .board-shell.scaled .top-strip,
+  .board-shell.scaled .action-row {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .board-shell.scaled .table-top {
+    gap: 0.65rem;
+    align-items: center;
+  }
+
+  .board-shell.scaled .scorecard-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .board-shell.scaled .major-column {
+    border-left: 2px solid rgba(120, 15, 31, 0.14);
+    border-top: 0;
+  }
+
+  .board-shell.scaled .taunt-list {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .board-shell.scaled .taunt-btn {
+    min-height: 86px;
+  }
+
+  .board-shell.scaled .taunt-btn span {
+    font-size: 2.25rem;
   }
 }

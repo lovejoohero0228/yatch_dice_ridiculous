@@ -30,6 +30,7 @@ function randomDice(kept: boolean[], baseDice: [number, number, number, number, 
 
 export default function App() {
   const online = useOnlineGame();
+  const [boardScale, setBoardScale] = useState(1);
   const [scene, setScene] = useState<Scene>('intro');
   const [step, setStep] = useState<IntroStep>('account-choice');
   const [newName, setNewName] = useState('');
@@ -78,6 +79,25 @@ export default function App() {
   useEffect(() => {
     if (scene === 'online-game' && onlineGame) setMessage('');
   }, [scene, onlineGame]);
+
+  useEffect(() => {
+    const updateScale = () => {
+      if (window.innerWidth > 720) {
+        setBoardScale(1);
+        return;
+      }
+      const baseWidth = 820;
+      const baseHeight = 1180;
+      const widthScale = (window.innerWidth - 12) / baseWidth;
+      const heightScale = (window.innerHeight - 12) / baseHeight;
+      const next = Math.min(1, widthScale, heightScale);
+      setBoardScale(Math.max(0.6, next));
+    };
+
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, []);
 
   useEffect(() => {
     if (scene === 'intro' && (step === 'room-wait' || step === 'room-join') && onlineGame) {
@@ -285,7 +305,8 @@ export default function App() {
       )}
 
       {scene !== 'intro' && game && (
-        <section className="board-shell">
+        <section className="board-viewport">
+          <section className="board-shell scaled" style={{ '--board-scale': boardScale } as CSSProperties}>
           <header className="top-strip table-top">
             <article className={`score-tile ${game.currentPlayer === 0 ? 'active' : ''}`}>
               {taunts.filter((t) => t.playerIndex === 0).map((t, i) => (
@@ -347,6 +368,7 @@ export default function App() {
               {winner === null ? 'DRAW' : `${players[winner]?.name} WINS`}
             </div>
           )}
+        </section>
         </section>
       )}
     </main>
