@@ -10,6 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataDir = join(__dirname, '..', 'data');
 const dbPath = join(dataDir, 'db.json');
 const PORT = Number(process.env.PORT || 4000);
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 const TURN_SECONDS = 30;
 const RECONNECT_GRACE_MS = 90_000;
 
@@ -22,7 +23,7 @@ const db = JSON.parse(readFileSync(dbPath, 'utf-8'));
 const rooms = new Map();
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: CORS_ORIGIN === '*' ? true : CORS_ORIGIN }));
 app.use(express.json());
 
 app.get('/health', (_, res) => res.json({ ok: true }));
@@ -81,7 +82,7 @@ app.get('/leaderboard', (_, res) => {
 });
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: '*' } });
+const io = new Server(httpServer, { cors: { origin: CORS_ORIGIN === '*' ? true : CORS_ORIGIN } });
 
 io.on('connection', (socket) => {
   socket.on('lobby:join', ({ roomCode, accountId }) => {

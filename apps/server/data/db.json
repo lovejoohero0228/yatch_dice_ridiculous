@@ -1,0 +1,63 @@
+{
+  "accounts": {
+    "dl77tl68": {
+      "id": "dl77tl68",
+      "name": "test1",
+      "points": 0,
+      "wins": 0,
+      "losses": 0,
+      "draws": 0,
+      "games": 0,
+      "ownedSkins": [
+        "classic"
+      ],
+      "selectedSkin": "classic"
+    },
+    "uc2mr8be": {
+      "id": "uc2mr8be",
+      "name": "test2",
+      "points": 0,
+      "wins": 0,
+      "losses": 0,
+      "draws": 0,
+      "games": 0,
+      "ownedSkins": [
+        "classic"
+      ],
+      "selectedSkin": "classic"
+    }
+  },
+  "skins": {
+    "classic": {
+      "id": "classic",
+      "name": "Classic",
+      "price": 0
+    },
+    "fire": {
+      "id": "fire",
+      "name": "Fire",
+      "price": 120
+    },
+    "stars": {
+      "id": "stars",
+      "name": "Stars",
+      "price": 150
+    },
+    "fruits": {
+      "id": "fruits",
+      "name": "Fruits",
+      "price": 180
+    },
+    "space": {
+      "id": "space",
+      "name": "Space",
+      "price": 220
+    },
+    "gem": {
+      "id": "gem",
+      "name": "Gem",
+      "price": 260
+    }
+  },
+  "matches": []
+}

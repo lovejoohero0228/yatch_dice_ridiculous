@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: yacht-dice-server
+    runtime: node
+    rootDir: apps/server
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: CORS_ORIGIN
+        value: "*"
+
+  - type: static_site
+    name: yacht-dice-web
+    rootDir: apps/web
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: VITE_SERVER_URL
+        sync: false
