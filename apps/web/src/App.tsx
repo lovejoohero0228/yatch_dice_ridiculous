@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DiceRack } from './components/game/DiceRack';
 import { EmojiTauntBar } from './components/game/EmojiTauntBar';
 import { Scorecard } from './components/game/Scorecard';
@@ -42,6 +42,7 @@ export default function App() {
   const [localTaunts, setLocalTaunts] = useState<Array<{ id: number; emoji: string; playerIndex: 0 | 1 }>>([]);
   const [localRolling, setLocalRolling] = useState(false);
   const [previewDice, setPreviewDice] = useState<[number, number, number, number, number] | null>(null);
+  const holdingRollRef = useRef(false);
   const generatedRoom = useMemo(() => makeRoomCode(), []);
 
   const activeAccount = online.activeAccount;
@@ -59,8 +60,7 @@ export default function App() {
   const rolling = isOnline ? onlineRolling : localRolling;
   const myTurn = isOnline ? Boolean(game && online.myPlayerIndex === game.currentPlayer) : Boolean(game && game.currentPlayer === 0);
   const canKeep = Boolean(game && myTurn && game.rolled && game.rollsLeft < 3 && !isGameOver(game) && !rolling);
-  const canRoll = Boolean(game && myTurn && game.rollsLeft > 0 && !isGameOver(game) && !rolling);
-  const canStopRoll = Boolean(game && myTurn && rolling);
+  const canRoll = Boolean(game && myTurn && game.rollsLeft > 0 && !isGameOver(game));
   const shownDice = previewDice ?? game?.dice ?? [1, 1, 1, 1, 1];
   const timer = isOnline && onlineGame?.turnEndsAt ? Math.max(0, Math.ceil((onlineGame.turnEndsAt - Date.now()) / 1000)) : null;
   const scorePlayers = (players.length === 2
@@ -122,6 +122,7 @@ export default function App() {
 
   useEffect(() => {
     if (scene !== 'local-game') setLocalRolling(false);
+    if (scene === 'intro') holdingRollRef.current = false;
   }, [scene]);
 
   async function handleCreateAccountContinue() {
@@ -142,14 +143,16 @@ export default function App() {
     setStep('mode-select');
   }
 
-  function startRoll() {
-    if (!game || !canRoll) return;
+  function beginHoldRoll() {
+    if (!game || !canRoll || holdingRollRef.current) return;
+    holdingRollRef.current = true;
     if (isOnline) online.actionRollStart();
     else setLocalRolling(true);
   }
 
-  function stopRoll() {
-    if (!game || !canStopRoll) return;
+  function endHoldRoll() {
+    if (!holdingRollRef.current || !game) return;
+    holdingRollRef.current = false;
     if (isOnline) online.actionRollStop();
     else {
       setLocalRolling(false);
@@ -351,10 +354,13 @@ export default function App() {
                 <div className="action-row compact">
                   <button
                     className="roll-vertical"
-                    disabled={!canRoll && !canStopRoll}
-                    onClick={canStopRoll ? stopRoll : startRoll}
+                    disabled={!canRoll}
+                    onPointerDown={beginHoldRoll}
+                    onPointerUp={endHoldRoll}
+                    onPointerCancel={endHoldRoll}
+                    onPointerLeave={endHoldRoll}
                   >
-                    {canStopRoll ? 'Stop' : 'Roll'}
+                    Roll
                   </button>
                   <button className="confirm-score" disabled={!myTurn || !game.pendingCategory || !game.rolled || isOver} onClick={onConfirmCategory}>
                     Confirm Score
