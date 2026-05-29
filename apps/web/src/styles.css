@@ -768,6 +768,10 @@ button {
     left: -2.9rem;
   }
 
+  .score-emoji {
+    font-size: 3.2rem;
+  }
+
   .table-head,
   .scorecard-columns {
     grid-template-columns: 1fr;
@@ -795,6 +799,24 @@ button {
     font-size: 1.15rem;
   }
 
+  .scorecard-cell {
+    font-size: clamp(1.35rem, 5.8vw, 2rem);
+  }
+
+  .scorecard-label {
+    font-size: clamp(0.82rem, 2.8vw, 1.04rem);
+  }
+
+  .bonus-copy strong,
+  .bonus-score {
+    font-size: clamp(1.25rem, 5.6vw, 1.9rem);
+  }
+
+  .bonus-copy span,
+  .bonus-score small {
+    font-size: clamp(0.62rem, 2.2vw, 0.86rem);
+  }
+
   .scorecard-row,
   .bonus-strip {
     gap: 0.35rem;
@@ -807,6 +829,14 @@ button {
   }
 
   .taunt-list {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .taunt-btn {
+    min-height: 64px;
+  }
+
+  .taunt-btn span {
+    font-size: 1.7rem;
   }
 }

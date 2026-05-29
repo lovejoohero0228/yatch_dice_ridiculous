@@ -79,6 +79,12 @@ export default function App() {
     if (scene === 'online-game' && onlineGame) setMessage('');
   }, [scene, onlineGame]);
 
+  useEffect(() => {
+    if (scene === 'intro' && (step === 'room-wait' || step === 'room-join') && onlineGame) {
+      setScene('online-game');
+    }
+  }, [scene, step, onlineGame]);
+
   async function handleCreateAccountContinue() {
     try {
       setMessage('');
@@ -220,7 +226,6 @@ export default function App() {
                       onClick={() => {
                         setCreatedRoomCode(generatedRoom);
                         online.connectToRoom(generatedRoom);
-                        setScene('online-game');
                         setStep('room-wait');
                       }}
                     >
@@ -250,7 +255,7 @@ export default function App() {
                     disabled={!inputRoomCode.trim()}
                     onClick={() => {
                       online.connectToRoom(inputRoomCode);
-                      setScene('online-game');
+                      setStep('room-wait');
                     }}
                   >
                     입장
@@ -260,6 +265,21 @@ export default function App() {
               </>
             )}
             {(message || online.error) && <p>{message || online.error}</p>}
+          </div>
+        </section>
+      )}
+
+      {scene === 'online-game' && !game && (
+        <section className="intro-screen">
+          <div className="intro-card">
+            <h1>Yacht Dice</h1>
+            <div className="online-card">
+              <strong>{online.roomCode || createdRoomCode || inputRoomCode || 'ROOM'}</strong>
+              <p>Waiting for players...</p>
+            </div>
+            <button className="start-button" onClick={() => { setScene('intro'); setStep('online-menu'); }}>
+              Back
+            </button>
           </div>
         </section>
       )}
