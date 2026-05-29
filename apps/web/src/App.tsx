@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DiceRack } from './components/game/DiceRack';
 import { EmojiTauntBar } from './components/game/EmojiTauntBar';
 import { Scorecard } from './components/game/Scorecard';
@@ -40,10 +40,8 @@ export default function App() {
   const [message, setMessage] = useState('');
   const [localMode, setLocalMode] = useState<GameMode>('bot');
   const [localTaunts, setLocalTaunts] = useState<Array<{ id: number; emoji: string; playerIndex: 0 | 1 }>>([]);
+  const [localRolling, setLocalRolling] = useState(false);
   const [previewDice, setPreviewDice] = useState<[number, number, number, number, number] | null>(null);
-  const rollPreviewRef = useRef<number | null>(null);
-  const rollReleasedRef = useRef(false);
-  const isHoldingRollRef = useRef(false);
   const generatedRoom = useMemo(() => makeRoomCode(), []);
 
   const activeAccount = online.activeAccount;
@@ -57,9 +55,12 @@ export default function App() {
   const game = scene === 'online-game' ? onlineGame : scene === 'local-game' ? localGame : null;
   const players = game?.players ?? [];
   const isOnline = scene === 'online-game';
+  const onlineRolling = Boolean(isOnline && onlineGame?.isRolling);
+  const rolling = isOnline ? onlineRolling : localRolling;
   const myTurn = isOnline ? Boolean(game && online.myPlayerIndex === game.currentPlayer) : Boolean(game && game.currentPlayer === 0);
-  const canKeep = Boolean(game && myTurn && game.rolled && game.rollsLeft < 3 && !isGameOver(game));
-  const canRoll = Boolean(game && myTurn && game.rollsLeft > 0 && !isGameOver(game));
+  const canKeep = Boolean(game && myTurn && game.rolled && game.rollsLeft < 3 && !isGameOver(game) && !rolling);
+  const canRoll = Boolean(game && myTurn && game.rollsLeft > 0 && !isGameOver(game) && !rolling);
+  const canStopRoll = Boolean(game && myTurn && rolling);
   const shownDice = previewDice ?? game?.dice ?? [1, 1, 1, 1, 1];
   const timer = isOnline && onlineGame?.turnEndsAt ? Math.max(0, Math.ceil((onlineGame.turnEndsAt - Date.now()) / 1000)) : null;
   const scorePlayers = (players.length === 2
@@ -71,10 +72,6 @@ export default function App() {
   const winner = isOnline ? onlineGame?.winner ?? null : localGame.winner;
   const isOver = game ? isGameOver(game) : false;
   const taunts = isOnline ? online.taunts : localTaunts;
-
-  useEffect(() => () => {
-    if (rollPreviewRef.current !== null) window.clearInterval(rollPreviewRef.current);
-  }, []);
 
   useEffect(() => {
     if (scene === 'online-game' && onlineGame) setMessage('');
@@ -88,8 +85,8 @@ export default function App() {
       }
       const baseWidth = 820;
       const baseHeight = 1180;
-      const widthScale = (window.innerWidth - 12) / baseWidth;
-      const heightScale = (window.innerHeight - 12) / baseHeight;
+      const widthScale = (window.innerWidth - 24) / baseWidth;
+      const heightScale = (window.innerHeight - 72) / baseHeight;
       const next = Math.min(1, widthScale, heightScale);
       setBoardScale(Math.max(0.6, next));
     };
@@ -104,6 +101,22 @@ export default function App() {
       setScene('online-game');
     }
   }, [scene, step, onlineGame]);
+
+  useEffect(() => {
+    if (!game || !rolling) {
+      setPreviewDice(null);
+      return;
+    }
+    setPreviewDice(randomDice(game.kept, game.dice));
+    const timer = window.setInterval(() => {
+      setPreviewDice(randomDice(game.kept, game.dice));
+    }, 60);
+    return () => window.clearInterval(timer);
+  }, [rolling, game?.dice, game?.kept, game]);
+
+  useEffect(() => {
+    if (scene !== 'local-game') setLocalRolling(false);
+  }, [scene]);
 
   async function handleCreateAccountContinue() {
     try {
@@ -123,29 +136,19 @@ export default function App() {
     setStep('mode-select');
   }
 
-  function beginHoldRoll() {
-    if (!game || !canRoll || rollPreviewRef.current !== null) return;
-    isHoldingRollRef.current = true;
-    rollReleasedRef.current = false;
-    setPreviewDice(randomDice(game.kept, game.dice));
-    rollPreviewRef.current = window.setInterval(() => {
-      setPreviewDice(randomDice(game.kept, game.dice));
-    }, 45);
+  function startRoll() {
+    if (!game || !canRoll) return;
+    if (isOnline) online.actionRollStart();
+    else setLocalRolling(true);
   }
 
-  function endHoldRoll() {
-    if (!isHoldingRollRef.current) return;
-    isHoldingRollRef.current = false;
-    if (!game || rollReleasedRef.current) return;
-    rollReleasedRef.current = true;
-    if (rollPreviewRef.current !== null) {
-      window.clearInterval(rollPreviewRef.current);
-      rollPreviewRef.current = null;
+  function stopRoll() {
+    if (!game || !canStopRoll) return;
+    if (isOnline) online.actionRollStop();
+    else {
+      setLocalRolling(false);
+      localGame.rollDice();
     }
-    setPreviewDice(null);
-    if (!canRoll) return;
-    if (isOnline) online.actionRoll();
-    else localGame.rollDice();
   }
 
   function onSelectCategory(categoryId: CategoryId) {
@@ -338,17 +341,17 @@ export default function App() {
                 onSelect={onSelectCategory}
               />
               <section className="dice-stage compact">
-                <DiceRack dice={shownDice} kept={game.kept} canKeep={canKeep} rolling={previewDice !== null} onToggle={onToggleKeep} />
+                <DiceRack dice={shownDice} kept={game.kept} canKeep={canKeep} rolling={rolling} onToggle={onToggleKeep} />
                 <div className="action-row compact">
                   <button
                     className="roll-vertical"
                     disabled={!canRoll}
-                    onPointerDown={beginHoldRoll}
-                    onPointerUp={endHoldRoll}
-                    onPointerCancel={endHoldRoll}
-                    onPointerLeave={endHoldRoll}
+                    onClick={startRoll}
                   >
                     Roll
+                  </button>
+                  <button className="confirm-score" disabled={!canStopRoll} onClick={stopRoll}>
+                    Stop
                   </button>
                   <button className="confirm-score" disabled={!myTurn || !game.pendingCategory || !game.rolled || isOver} onClick={onConfirmCategory}>
                     Confirm Score

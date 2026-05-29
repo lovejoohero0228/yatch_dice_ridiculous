@@ -115,6 +115,28 @@ io.on('connection', (socket) => {
 
   socket.on('game:roll', () => withTurnPlayer(socket, (state) => {
     if (state.game.rollsLeft <= 0 || state.game.round > state.game.totalRounds) return;
+    state.game.isRolling = false;
+    state.game.rollingPlayer = null;
+    state.game.dice = rollDice(state.game.kept, state.game.dice);
+    state.game.rollsLeft -= 1;
+    state.game.pendingCategory = null;
+    state.game.rolled = true;
+    emitRoomState(state);
+  }));
+
+  socket.on('game:rollStart', () => withTurnPlayer(socket, (state) => {
+    if (state.game.rollsLeft <= 0 || state.game.round > state.game.totalRounds) return;
+    if (state.game.isRolling) return;
+    state.game.isRolling = true;
+    state.game.rollingPlayer = state.game.currentPlayer;
+    emitRoomState(state);
+  }));
+
+  socket.on('game:rollStop', () => withTurnPlayer(socket, (state) => {
+    if (!state.game.isRolling || state.game.rollingPlayer !== state.game.currentPlayer) return;
+    if (state.game.rollsLeft <= 0 || state.game.round > state.game.totalRounds) return;
+    state.game.isRolling = false;
+    state.game.rollingPlayer = null;
     state.game.dice = rollDice(state.game.kept, state.game.dice);
     state.game.rollsLeft -= 1;
     state.game.pendingCategory = null;
@@ -215,6 +237,8 @@ function createGameState(roomCode, accounts) {
     turnEndsAt: null,
     isOver: false,
     winner: null,
+    isRolling: false,
+    rollingPlayer: null,
   };
 }
 
@@ -238,6 +262,8 @@ function applyCategoryAndNextTurn(state, categoryId) {
   g.pendingCategory = null;
   g.rollsLeft = 3;
   g.rolled = false;
+  g.isRolling = false;
+  g.rollingPlayer = null;
   g.turnEndsAt = Date.now() + TURN_SECONDS * 1000;
   if (g.round > g.totalRounds) {
     g.isOver = true;
@@ -248,6 +274,8 @@ function applyCategoryAndNextTurn(state, categoryId) {
 
 function autoPlayTimedOutTurn(state) {
   const g = state.game;
+  g.isRolling = false;
+  g.rollingPlayer = null;
   if (!g.rolled) {
     g.dice = rollDice([false, false, false, false, false], g.dice);
     g.rolled = true;

@@ -32,6 +32,8 @@ type RoomState = {
     turnEndsAt: number | null;
     isOver: boolean;
     winner: 0 | 1 | null;
+    isRolling?: boolean;
+    rollingPlayer?: 0 | 1 | null;
   };
 };
 
@@ -122,6 +124,12 @@ export function useOnlineGame() {
   function actionRoll() {
     socketRef.current?.emit('game:roll');
   }
+  function actionRollStart() {
+    socketRef.current?.emit('game:rollStart');
+  }
+  function actionRollStop() {
+    socketRef.current?.emit('game:rollStop');
+  }
   function actionToggleKeep(index: number) {
     socketRef.current?.emit('game:toggleKeep', { index });
   }
@@ -152,6 +160,8 @@ export function useOnlineGame() {
     selectSkin,
     connectToRoom,
     actionRoll,
+    actionRollStart,
+    actionRollStop,
     actionToggleKeep,
     actionSelectCategory,
     actionConfirmCategory,

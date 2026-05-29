@@ -34,6 +34,10 @@ body {
 
 button {
   font: inherit;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .app-root {
@@ -155,10 +159,10 @@ button {
 .board-viewport {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   min-height: 100dvh;
   overflow: auto;
-  padding: 0.2rem;
+  padding: clamp(8px, 2.2dvh, 22px) clamp(6px, 2vw, 14px);
 }
 
 .board-shell.scaled {
@@ -859,6 +863,13 @@ button {
 
   .board-shell.scaled {
     padding: 0.85rem;
+  }
+
+  .board-viewport {
+    min-height: 100svh;
+    overflow: hidden;
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
   }
 
   .board-shell.scaled .top-strip,
