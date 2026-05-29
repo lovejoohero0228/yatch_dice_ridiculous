@@ -167,10 +167,172 @@ button {
 
 .board-shell.scaled {
   width: 820px;
+  height: 1180px;
   max-width: none;
   margin: 0;
   transform: scale(var(--board-scale, 1));
   transform-origin: top center;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.board-shell.scaled .top-strip {
+  height: 136px;
+  padding: 0 0 12px;
+  flex: 0 0 auto;
+}
+
+.board-shell.scaled .score-tile {
+  width: 128px;
+  min-width: 128px;
+  height: 96px;
+  padding: 10px 10px 8px;
+}
+
+.board-shell.scaled .title-block strong {
+  font-size: 44px;
+  line-height: 1;
+  margin: 2px 0 6px;
+}
+
+.board-shell.scaled .title-block span {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.board-shell.scaled .board-main {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.board-shell.scaled .table-layout {
+  grid-template-rows: auto auto auto;
+  gap: 12px;
+}
+
+.board-shell.scaled .scorecard-board {
+  width: 100%;
+  height: 790px;
+}
+
+.board-shell.scaled .scorecard-header {
+  height: 74px;
+}
+
+.board-shell.scaled .scorecard-title {
+  font-size: 42px;
+  line-height: 1;
+  padding: 14px 0;
+}
+
+.board-shell.scaled .scorecard-columns {
+  height: calc(100% - 74px);
+  grid-template-columns: 1fr 1fr;
+}
+
+.board-shell.scaled .scorecard-column {
+  padding: 10px;
+}
+
+.board-shell.scaled .scorecard-row {
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 8px;
+  min-height: 0;
+  align-items: center;
+}
+
+.board-shell.scaled .scorecard-cell {
+  width: 100%;
+  height: 76px;
+  min-width: 0;
+  min-height: 76px;
+  aspect-ratio: auto;
+  border-radius: 14px;
+  padding: 0;
+  line-height: 1;
+}
+
+.board-shell.scaled .scorecard-label {
+  font-size: 14px;
+  line-height: 1.05;
+  padding: 0 8px;
+  white-space: normal;
+  overflow: hidden;
+  text-wrap: balance;
+}
+
+.board-shell.scaled .player-cell {
+  font-size: 36px;
+}
+
+.board-shell.scaled .bonus-strip {
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.board-shell.scaled .bonus-copy,
+.board-shell.scaled .bonus-score {
+  height: 86px;
+  aspect-ratio: auto;
+  border-radius: 14px;
+}
+
+.board-shell.scaled .bonus-copy strong,
+.board-shell.scaled .bonus-score {
+  font-size: 46px;
+  line-height: 1;
+}
+
+.board-shell.scaled .bonus-copy span,
+.board-shell.scaled .bonus-score small {
+  font-size: 16px;
+}
+
+.board-shell.scaled .dice-stage {
+  padding-top: 2px;
+}
+
+.board-shell.scaled .dice-grid.bare {
+  gap: 12px;
+}
+
+.board-shell.scaled .die-shell {
+  width: 80px;
+}
+
+.board-shell.scaled .action-row.compact {
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.board-shell.scaled .roll-vertical,
+.board-shell.scaled .confirm-score {
+  width: 214px;
+  min-width: 214px;
+  height: 62px;
+  min-height: 62px;
+  padding: 0;
+  font-size: 38px;
+  line-height: 1;
+}
+
+.board-shell.scaled .taunt-list {
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.board-shell.scaled .taunt-btn {
+  height: 92px;
+  min-height: 92px;
+  padding: 0;
+}
+
+.board-shell.scaled .taunt-btn span {
+  font-size: 46px;
+  line-height: 1;
 }
 
 .top-strip {
