@@ -171,7 +171,12 @@ io.on('connection', (socket) => {
     if (!state) return;
     const playerIndex = playerIndexByAccount(state, socket.data.accountId);
     if (playerIndex === -1) return;
-    io.to(state.roomCode).emit('game:taunt', { emoji, playerIndex, id: Date.now() + Math.random() });
+    io.to(state.roomCode).emit('game:taunt', {
+      emoji,
+      playerIndex,
+      id: Date.now() + Math.random(),
+      ...makeTauntFx(playerIndex),
+    });
   });
 
   socket.on('disconnect', () => {
@@ -421,4 +426,20 @@ function defaultSkins() {
 
 function cryptoId() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+function makeTauntFx(playerIndex) {
+  const isLeft = playerIndex === 0;
+  const xMin = isLeft ? 5 : 53;
+  const xMax = isLeft ? 47 : 95;
+  return {
+    x: randInt(xMin, xMax),
+    y: randInt(8, 88),
+    size: randInt(88, 160),
+    rotate: randInt(-18, 18),
+  };
+}
+
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }

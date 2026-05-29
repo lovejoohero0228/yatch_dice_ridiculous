@@ -39,7 +39,7 @@ export default function App() {
   const [createdRoomCode, setCreatedRoomCode] = useState('');
   const [message, setMessage] = useState('');
   const [localMode, setLocalMode] = useState<GameMode>('bot');
-  const [localTaunts, setLocalTaunts] = useState<Array<{ id: number; emoji: string; playerIndex: 0 | 1 }>>([]);
+  const [localTaunts, setLocalTaunts] = useState<Array<{ id: number; emoji: string; playerIndex: 0 | 1; x: number; y: number; size: number; rotate: number }>>([]);
   const [localRolling, setLocalRolling] = useState(false);
   const [previewDice, setPreviewDice] = useState<[number, number, number, number, number] | null>(null);
   const holdingRollRef = useRef(false);
@@ -182,7 +182,7 @@ export default function App() {
     }
     const id = Date.now() + Math.floor(Math.random() * 1000);
     const playerIndex = (localGame.currentPlayer === 0 ? 0 : 1) as 0 | 1;
-    setLocalTaunts((prev) => [...prev, { id, emoji, playerIndex }]);
+    setLocalTaunts((prev) => [...prev, { id, emoji, playerIndex, ...makeTauntFx(playerIndex) }]);
     window.setTimeout(() => setLocalTaunts((prev) => prev.filter((t) => t.id !== id)), 1900);
   }
 
@@ -318,12 +318,10 @@ export default function App() {
 
       {scene !== 'intro' && game && (
         <section className="board-viewport">
+          <div className="board-canvas" style={{ '--board-scale': boardScale } as CSSProperties}>
           <section className="board-shell scaled" style={{ '--board-scale': boardScale } as CSSProperties}>
           <header className="top-strip table-top">
             <article className={`score-tile ${game.currentPlayer === 0 ? 'active' : ''}`}>
-              {taunts.filter((t) => t.playerIndex === 0).map((t, i) => (
-                <span key={t.id} className="score-emoji score-emoji-right" style={{ '--burst-index': i } as CSSProperties}>{t.emoji}</span>
-              ))}
               <span className="tile-label">{players[0]?.name ?? 'P1'}</span>
               <strong>{players[0]?.totalScore ?? 0}</strong>
             </article>
@@ -332,13 +330,28 @@ export default function App() {
               <span>Round {game.round}/13 {timer !== null ? `| Turn ${timer}s` : ''}</span>
             </div>
             <article className={`score-tile ${game.currentPlayer === 1 ? 'active' : ''}`}>
-              {taunts.filter((t) => t.playerIndex === 1).map((t, i) => (
-                <span key={t.id} className="score-emoji score-emoji-left" style={{ '--burst-index': i } as CSSProperties}>{t.emoji}</span>
-              ))}
               <span className="tile-label">{players[1]?.name ?? 'P2'}</span>
               <strong>{players[1]?.totalScore ?? 0}</strong>
             </article>
           </header>
+          <div className="taunt-overlay-layer" aria-hidden="true">
+            {taunts.map((t) => (
+              <span
+                key={t.id}
+                className="score-emoji score-emoji-floating"
+                style={
+                  {
+                    '--taunt-left': `${t.x}%`,
+                    '--taunt-top': `${t.y}%`,
+                    '--taunt-size': `${t.size}px`,
+                    '--taunt-rotate': `${t.rotate}deg`,
+                  } as CSSProperties
+                }
+              >
+                {t.emoji}
+              </span>
+            ))}
+          </div>
           <section className="board-main">
             <section className="table-layout">
               <Scorecard
@@ -381,6 +394,7 @@ export default function App() {
             </div>
           )}
         </section>
+        </div>
         </section>
       )}
     </main>
@@ -389,4 +403,20 @@ export default function App() {
 
 function isGameOver(game: { round: number; isOver?: boolean }) {
   return typeof game.isOver === 'boolean' ? game.isOver : game.round > 13;
+}
+
+function makeTauntFx(playerIndex: 0 | 1) {
+  const isLeft = playerIndex === 0;
+  const xMin = isLeft ? 5 : 53;
+  const xMax = isLeft ? 47 : 95;
+  return {
+    x: randInt(xMin, xMax),
+    y: randInt(8, 88),
+    size: randInt(88, 160),
+    rotate: randInt(-18, 18),
+  };
+}
+
+function randInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }

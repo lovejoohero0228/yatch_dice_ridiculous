@@ -45,7 +45,7 @@ export function useOnlineGame() {
   const [roomCode, setRoomCode] = useState('');
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [error, setError] = useState('');
-  const [taunts, setTaunts] = useState<{ id: number; emoji: string; playerIndex: 0 | 1 }[]>([]);
+  const [taunts, setTaunts] = useState<{ id: number; emoji: string; playerIndex: 0 | 1; x: number; y: number; size: number; rotate: number }[]>([]);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {

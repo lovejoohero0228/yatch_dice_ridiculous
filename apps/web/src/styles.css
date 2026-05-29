@@ -161,17 +161,27 @@ button {
   justify-content: center;
   align-items: center;
   min-height: 100svh;
-  overflow: hidden;
+  overflow: auto;
   padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
 }
 
+.board-canvas {
+  position: relative;
+  flex: 0 0 auto;
+  width: calc(820px * var(--board-scale, 1));
+  height: calc(1180px * var(--board-scale, 1));
+}
+
 .board-shell.scaled {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 820px;
   height: 1180px;
   max-width: none;
   margin: 0;
   transform: scale(var(--board-scale, 1));
-  transform-origin: top center;
+  transform-origin: top left;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -432,21 +442,26 @@ button {
 
 .score-emoji {
   position: absolute;
-  top: 50%;
   font-size: 5.1rem;
   line-height: 1;
   animation: scoreEmojiPop 2s cubic-bezier(0.22, 0.7, 0.2, 1) forwards;
   pointer-events: none;
+  user-select: none;
+  z-index: 10;
 }
 
-.score-emoji-right {
-  right: calc(-4.4rem - (var(--burst-index, 0) * 0.7rem));
-  transform: translateY(calc(-50% + (var(--burst-index, 0) * 0.12rem)));
+.taunt-overlay-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9;
 }
 
-.score-emoji-left {
-  left: calc(-4.4rem - (var(--burst-index, 0) * 0.7rem));
-  transform: translateY(calc(-50% + (var(--burst-index, 0) * 0.12rem)));
+.score-emoji-floating {
+  left: var(--taunt-left);
+  top: var(--taunt-top);
+  font-size: var(--taunt-size);
+  transform: translate(-50%, -50%) rotate(var(--taunt-rotate));
 }
 
 .top-strip {
@@ -911,19 +926,19 @@ button {
 @keyframes scoreEmojiPop {
   0% {
     opacity: 0;
-    transform: translateY(-45%) scale(0.72);
+    transform: translate(-50%, -50%) rotate(var(--taunt-rotate)) scale(0.68);
   }
   15% {
     opacity: 1;
-    transform: translateY(-58%) scale(1.12);
+    transform: translate(-50%, -58%) rotate(calc(var(--taunt-rotate) + 2deg)) scale(1.18);
   }
   55% {
     opacity: 1;
-    transform: translateY(-50%) scale(1);
+    transform: translate(-50%, -50%) rotate(var(--taunt-rotate)) scale(1.06);
   }
   100% {
     opacity: 0;
-    transform: translateY(-42%) scale(0.9);
+    transform: translate(-50%, -40%) rotate(calc(var(--taunt-rotate) - 1deg)) scale(0.9);
   }
 }
 
@@ -941,18 +956,6 @@ button {
   .table-top {
     gap: 0.45rem;
     align-items: stretch;
-  }
-
-  .score-emoji-right {
-    right: -2.9rem;
-  }
-
-  .score-emoji-left {
-    left: -2.9rem;
-  }
-
-  .score-emoji {
-    font-size: 3.2rem;
   }
 
   .table-head,
@@ -1029,7 +1032,7 @@ button {
 
   .board-viewport {
     min-height: 100svh;
-    overflow: hidden;
+    overflow: auto;
     padding: max(4px, env(safe-area-inset-top)) max(4px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
   }
 
