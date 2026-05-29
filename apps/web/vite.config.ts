@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['apple-touch-icon.png'],
       manifest: {
-        name: 'Yacht Dice',
-        short_name: 'YachtDice',
+        name: 'YachuDice',
+        short_name: 'YachuDice',
         description: 'Play Yacht Dice in a mobile app-like experience.',
         theme_color: '#16203b',
         background_color: '#16203b',
