@@ -13,8 +13,9 @@ services:
       - key: CORS_ORIGIN
         value: "*"
 
-  - type: static_site
+  - type: web
     name: yacht-dice-web
+    runtime: static
     rootDir: apps/web
     buildCommand: npm install && npm run build
     staticPublishPath: dist
